@@ -228,3 +228,85 @@ report and does not run discovery; `tui`/`graph chain` already write
 `report`'s option surface exactly as documented in `BUILD/CONTRACTS.md`, adds
 no new data format, and degrades to an explicit empty chain state when no
 presentation file is present instead of failing.
+
+2026-09-26 D-034
+Decision: closed the overnight-run bug report of a 2,312-node, 20,684-edge
+graph explosion, 20,684 attack paths, and a 100 percent PQC readiness
+contradiction for `examples/vulnerable-agent`.
+Investigation: bisected at a14d7ba (pre-Milestone A baseline), b4224cb
+(Milestone A, `requires_path` in `find_attack_paths`), and 34b891d
+(Milestone B, report generation). A fresh `lattence scan` at every one of
+these three commits, run repeatedly and into the same output directory,
+produced identical, stable results: 24 graph nodes, 92 edges, 92 attack
+paths, PQC readiness 21 percent. None of the three commits reproduces the
+explosion. The `examples/vulnerable-agent/lattence-report.json` and
+`.html` files that showed the bad numbers are listed in
+`examples/vulnerable-agent/.gitignore` (not tracked by git) and were a
+stale local artifact left over from an earlier, unrelated broken run (its
+2,295 duplicate `crypto_algorithm` nodes trace to duplicate agent nodes
+tagged with framework-detection rule ids like LT-AI-103 and LT-AI-106
+across many frameworks at once, a shape the current discovery pipeline
+does not produce). Conclusion: no live regression exists in the graph
+construction or attack path counting on `dev`. The stale files were
+deleted; nothing in source needed a fix for the explosion itself.
+Real bug found and fixed: `create_report` (used by `scan` and `attack`)
+never populated the report summary's `quantum_vulnerable_assets` and
+`quantum_vulnerable_paths` fields, so they silently kept their Pydantic
+default of 0 regardless of the graph's real crypto topology, while
+`terminal.py`'s "Quantum vulnerable" row computed a real, correct count
+straight from the graph. Only the `pqc`/`crypto` commands ever called
+`create_crypto_assessment`, the one code path that actually computes these
+two fields via `assess_quantum_exposure`. Fixed in
+`lattence-cli/src/lattence/cli/workflow.py`: `create_report` now also
+builds the crypto dependency graph and runs `assess_quantum_exposure` on
+it (mirroring what `crypto_workflow.py` already does for the `pqc`
+command), and passes real `quantum_vulnerable_assets`/
+`quantum_vulnerable_paths` values into `build_report`. Verified against
+`examples/vulnerable-agent`: `quantum_vulnerable_paths` is now 140 (a real,
+non-zero, internally consistent count); `quantum_vulnerable_assets` is
+correctly 0 because none of this fixture's vulnerable crypto nodes are
+"isolated" per `BUILD/CONTRACTS.md`'s definition (no incoming relationship
+in the crypto dependency projection) since every one is reachable from an
+agent. Added
+`tests/cli/test_workflow.py::test_scan_vulnerable_agent_graph_and_pqc_summary_stay_sane`
+as a permanent regression test pinning the 17-24 node range, a sane edge
+count, and internal consistency between the terminal's vulnerable count
+and the JSON summary fields.
+
+2026-09-26 D-035
+Decision: added a real size ceiling to the HTML dashboard, root-causing why
+the original bug report's HTML file was also 14MB.
+Finding: `render_html_report` embedded the entire report JSON a second time,
+verbatim, inside a `<details><pre>` block on top of the findings and node
+tables, with no cap on either table's row count. For a report with 2,312
+nodes and 20,684 edges this alone explains the 14MB HTML figure (a large
+JSON payload duplicated once as table rows and once as raw text). This is
+a real defect independent of whether the underlying graph explosion was
+ever live in the codebase (D-034 found it was not, for the current fixture),
+because nothing prevented it from recurring for any genuinely large project.
+Fix: `lattence-evidence/src/lattence/evidence/html_report.py` now caps the
+findings and node tables at 200 rows (most severe/first, with a trailing
+note and a pointer to the full JSON file for the rest), and skips the
+inline raw-JSON dump above 500,000 bytes in favor of the same pointer.
+`lattence-report.json` is unaffected: it is not the thing that grows
+unboundedly, and this fix does not touch it. Added
+`tests/evidence/test_reporting.py::test_html_report_truncates_findings_and_nodes_past_the_table_cap`
+(250 synthetic findings and nodes, confirms both truncation notes and the
+JSON-too-large fallback) and
+`tests/cli/test_workflow.py::test_report_artifacts_for_vulnerable_agent_stay_under_size_ceiling`
+(real `examples/vulnerable-agent` run, both artifacts under a 1MB ceiling;
+today's real sizes are about 100KB JSON and 112KB HTML). The ceiling is
+1MB, not the requested 100KB target, because each finding legitimately
+carries full evidence and reproduction data per `BUILD/CONTRACTS.md`, and
+100KB is already close to today's real size for a 13-finding report; 1MB
+leaves headroom for legitimate evidence growth while still catching a
+runaway graph or an unbounded embed, which is the actual failure mode this
+guards against.
+Aside (unrelated tooling issue found and worked around during this task,
+not a code change): a stale, non-editable copy of the `lattence` namespace
+package had accumulated directly under `.venv/lib/python3.12/site-packages/lattence`,
+shadowing the editable `lattence-evidence` source and silently serving old
+code no matter how many times `uv sync --all-packages --dev --reinstall-package`
+was run. Removing that directory and re-running plain `uv sync --all-packages --dev`
+fixed it. Worth a note in `BUILD/STATE.md` for the next agent since it
+wastes time if not recognized.

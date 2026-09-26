@@ -1,5 +1,70 @@
 # Current state
 
+## 2026-09-26: Milestone 1 (overnight run) closed
+
+Root-caused the other half of the original bug report: the 14MB HTML file
+was largely caused by `render_html_report` embedding the entire report
+JSON a second time, verbatim, in an inline `<pre>` block, with no cap on
+the findings or graph node tables. Fixed: both tables now cap at 200 rows
+(most severe first, with a note pointing at the full JSON for the rest),
+and the inline JSON dump is skipped above 500,000 bytes with the same
+pointer. Added a synthetic 250-row regression test and a real-fixture size
+ceiling test (1MB, justified in `BUILD/DECISIONS.md` D-035 since each
+finding legitimately carries full evidence data). Real current sizes for
+`examples/vulnerable-agent`: about 100KB JSON, about 112KB HTML. Task
+T-159. Full suite: 382 passed, same 2 pre-existing Docker exclusions.
+
+Tooling note for future agents: hit a stale, non-editable copy of the
+`lattence` namespace package physically present under
+`.venv/lib/python3.12/site-packages/lattence`, which shadowed the editable
+`lattence-evidence` source and served old code even after
+`uv sync --all-packages --dev --reinstall-package <pkg>`. Fix: delete that
+directory, then run plain `uv sync --all-packages --dev` again. Check for
+this first if a source change does not seem to take effect.
+
+## 2026-09-26: Milestone 0 (overnight run) closed
+
+A bug report described `lattence scan` against `examples/vulnerable-agent`
+producing 2,312 graph nodes, 20,684 edges, 20,684 attack paths, and a
+contradictory 100 percent PQC readiness. Bisected at a14d7ba (pre-Milestone
+A), b4224cb (Milestone A), and 34b891d (Milestone B): a fresh `scan` at
+every one of the three commits, including repeated runs into the same
+output directory, produced identical stable numbers (24 nodes, 92 edges,
+92 attack paths, 21 percent PQC readiness). No commit on `dev` reproduces
+the explosion. The bad numbers traced to a stale, gitignored
+`examples/vulnerable-agent/lattence-report.json`/`.html` pair left over
+from an earlier, unrelated broken run, now deleted. Full evidence in
+`BUILD/DECISIONS.md` D-034.
+
+A second, real bug was found and fixed: `create_report` never computed
+`quantum_vulnerable_assets`/`quantum_vulnerable_paths` for `scan`/`attack`,
+so the JSON summary always showed 0 for both regardless of the graph's
+real crypto topology, while the terminal's "Quantum vulnerable" row was
+always correct. Fixed by having `create_report` run the same
+`assess_quantum_exposure` computation the `pqc` command already runs.
+Verified against `examples/vulnerable-agent` (real, current numbers,
+independently confirmed by reading the generated JSON, not just the
+terminal output): 24 graph nodes, 92 edges, 92 attack paths, 13 findings,
+PQC readiness 21 percent, `quantum_vulnerable_paths` 140,
+`quantum_vulnerable_assets` 0 (correctly, since none of this fixture's
+vulnerable crypto nodes are isolated per the contract's definition).
+Regression test added:
+`tests/cli/test_workflow.py::test_scan_vulnerable_agent_graph_and_pqc_summary_stay_sane`.
+Full suite: 380 passed, 2 pre-existing Docker daemon tests excluded
+(unrelated, no daemon in this environment). Task T-158, commit follows
+this state update. Milestones 1 through 4 from the overnight run plan were
+not started in this pass; see HANDOFF below if this run stops before they
+are picked up.
+
+## HANDOFF (if this run stops here)
+
+Milestones 0 and 1 are done and gated green. Next: Milestone 2 (cross-layer
+chain correlator audit, `lattence_ai/attacks/cross_layer.py`, checking for
+combinatorial-artifact chains the same way v0.5.1 fixed "32 correlations vs
+9 distinct paths"). Start by reading `BUILD/notes/ai-security.md` and the
+cross_layer module, then audit and record findings in `BUILD/DECISIONS.md`
+before changing anything.
+
 - Milestone: v1.0.0 shipped. Repository is public. Milestone A (detection
   precision hardening) done. Milestone B (web dashboard, minimum viable)
   done; holding per instruction before Milestone C.
