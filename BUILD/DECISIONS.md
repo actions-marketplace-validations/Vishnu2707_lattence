@@ -310,3 +310,63 @@ code no matter how many times `uv sync --all-packages --dev --reinstall-package`
 was run. Removing that directory and re-running plain `uv sync --all-packages --dev`
 fixed it. Worth a note in `BUILD/STATE.md` for the next agent since it
 wastes time if not recognized.
+
+2026-09-26 D-036
+Decision: audited `lattence_ai/attacks/cross_layer.py` for the same
+combinatorial-artifact bug class v0.5.1 fixed ("32 correlations vs 9
+distinct paths").
+Findings: `correlate_cross_layer_findings` emits one `CrossLayerCorrelation`
+per `(ai_finding, crypto_finding, path)` triple returned by
+`find_topology_paths`, filtered to require at least one hop of type
+`key_exchange` or `protected_by`. Every emitted correlation is backed by a
+real, stored graph edge traversed in a real direction, with evidence
+references pulled from the actual finding and hop evidence, not from a
+synthetic combination. Two AI findings and two crypto findings sharing the
+same underlying graph route legitimately produce separate correlations
+(they are different vulnerabilities, not duplicates), and this is the
+"finding correlations" count. Separately,
+`lattence-evidence/src/lattence/evidence/presentation.py`'s
+`summarize_cross_layer_chains` deduplicates by structural signature
+(`(edge_id, traversal)` per hop) to produce "distinct structural paths",
+which is exactly the v0.5.1 fix and is still in place, unmodified and
+correct. All four consumers, `graph_chain_command.py` (terminal),
+`tui.py`, `html_report.py`, and the `/v1/chain`/`/v1/dashboard` API routes,
+render both numbers from the same single `CrossLayerSummary` computed once
+by `presentation.py`, so there is no way for the two counts to diverge
+between renderers. Conclusion: no combinatorial-artifact bug found. A live
+`lattence graph chain examples/vulnerable-agent --offline --no-color` run
+during this audit reproduced the same accepted "32 finding correlations
+across 9 distinct structural paths" header and the same real
+`LT-AI-002 -> LT-PQC-203` chain (`accesses` reverse hop into
+`delete_customer_record`, then `key_exchange` forward hop into
+`crypto_algorithm:crypto_config.py:7:tls-1-2`) already pinned by
+`tests/cli/test_graph_chain_command.py`, confirming the fixture numbers
+have not drifted. No code change was needed for this audit; the README
+worked example added in this task uses this exact, freshly re-verified
+output.
+
+2026-09-26 D-037
+Decision: for Milestone 3 (broaden coverage), chose GitLab CI integration
+over a second discovery/attack language (Go or Java).
+Rationale: a second language means new discovery rules, new attack rule
+targeting, new fixtures, and new native-catalog entries across
+`lattence-core`, `lattence-ai`, and `lattence-packs`, the kind of surface
+that took multiple whole milestones (v0.3, v0.4) for Python. That does not
+fit cleanly in the time remaining in this overnight run without cutting
+corners on the audit discipline this run has otherwise held to. GitLab CI
+integration reuses everything already built in Phase 4: the `lattence
+scan`/`attack` commands, the existing `lattence sarif` converter, and the
+severity-gate exit code the GitHub Action already relies on. No new
+discovery or detection logic is needed, only a CI template.
+Scope: add `templates/gitlab-ci.yml`, an includable GitLab CI job
+definition mirroring `action.yml`'s composite action (install lattence,
+run scan or attack, convert to SARIF, publish it as a job artifact, exit
+nonzero on the severity gate). GitLab's native Security Dashboard expects
+its own `gl-sast-report.json` schema, not SARIF; this integration does not
+claim Security Dashboard support, only a downloadable SARIF artifact and a
+pipeline that fails the build on the configured severity gate, which is an
+honest, accurate scope matching what Phase 4 already ships for GitHub.
+Document the real command sequence in `docs/gitlab-ci.md` and verify it end
+to end locally against `examples/vulnerable-agent` (the template's exact
+shell commands, run outside GitLab's runner since none is available in
+this environment, are the acceptance evidence).

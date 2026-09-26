@@ -989,3 +989,74 @@ during this task, which silently shadowed the editable
 Deleting that directory and re-running plain `uv sync --all-packages --dev`
 fixed it. If a code change does not seem to take effect after the
 documented reinstall command, check for this first.
+
+# Milestone 2: cross-layer chain audit and flagship worked example
+
+[T-160] [Milestone 2] [AI security/UX] audit the cross-layer correlator and
+add a real worked example to the README | deps: T-159 | status: done |
+commit: self
+
+Audited `lattence_ai/attacks/cross_layer.py` for the combinatorial-artifact
+bug class v0.5.1 fixed. Every emitted `CrossLayerCorrelation` requires a
+real `find_topology_paths` result with a real `key_exchange` or
+`protected_by` hop; the "finding correlations" count and the
+`presentation.py`-computed "distinct structural paths" count (deduplicated
+by `(edge_id, traversal)` per hop, the v0.5.1 fix) are both still correct
+and both rendered from one shared `CrossLayerSummary` across the terminal,
+TUI, HTML, and API, so they cannot diverge between renderers. No
+combinatorial-artifact bug found. Full audit in `BUILD/DECISIONS.md` D-036.
+
+Added a "The differentiator: a real cross-layer chain" section to
+`README.md`, showing the real `LT-AI-002 -> LT-PQC-203` chain from
+`examples/vulnerable-agent` end to end (both edges, both stored and
+traversed directions, and the evidence line), with a plain-language
+explanation of each hop. The command and output were re-run live
+immediately before committing to confirm they match current behavior
+exactly; an earlier draft of this section incorrectly called `TLS 1.2`
+quantum-vulnerable, corrected after checking the fixture's actual
+`quantum_status` (`unknown`, not `vulnerable`) and the real title of
+`LT-PQC-203` (limited cryptographic agility, not a TLS-specific finding).
+
+Full suite: 382 passed (2 pre-existing Docker exclusions). Prose check
+passed on `README.md` and `BUILD/DECISIONS.md`.
+
+# Milestone 3: GitLab CI integration
+
+[T-161] [Milestone 3] [CI] add a GitLab CI job template reusing the
+existing SARIF plumbing | deps: T-160 | status: done | commit: self
+
+Chose GitLab CI integration over a second discovery/attack language (Go or
+Java) as the highest-leverage addition that fits the remaining scope of
+this run; a second language needs new discovery rules, attack targeting,
+fixtures, and native-catalog entries across three packages, which does not
+fit cleanly without cutting the audit discipline this run has otherwise
+held to. Proposal and rationale in `BUILD/DECISIONS.md` D-037.
+
+Added `templates/gitlab-ci.yml`, an includable job definition mirroring
+`action.yml`: installs lattence (`pypi` or `local` via `LATTENCE_SOURCE`),
+runs `lattence scan` or `lattence attack` (`LATTENCE_RUN_ATTACK`), converts
+the report with the existing `lattence sarif` command, and exits with the
+scan's own severity-gate exit code, captured across the SARIF conversion
+step with `set +e`/`set -e` since GitLab's script execution aborts on a
+nonzero exit otherwise, which would skip SARIF generation entirely on any
+gated finding. Publishes the JSON report, HTML dashboard, and SARIF file as
+job artifacts. Does not claim GitLab Security Dashboard integration, which
+needs GitLab's own `gl-sast-report.json` schema, not SARIF; documented
+honestly in `docs/gitlab-ci.md`.
+
+Verified end to end: ran the template's exact shell commands locally
+(no GitLab runner available in this environment) against
+`examples/vulnerable-agent`, confirming `lattence scan` produces the
+report, `lattence sarif` converts it to a valid SARIF 2.1.0 file (13
+results, matching the 13 findings), and the captured exit code (1, since
+the default `high` gate is met) survives past the SARIF conversion step
+to the final `exit $EXIT_CODE`.
+
+New tests: `tests/ci/test_gitlab_template.py` (YAML structure, real
+command presence, and the exit-code-capture ordering that fixes the
+abort-before-SARIF bug). README links `docs/gitlab-ci.md` and
+`templates/gitlab-ci.yml` from both the CI section and the documentation
+index.
+
+Full suite: 384 passed (2 pre-existing Docker exclusions). Lint, format,
+and `mypy --strict` pass for `tests/ci`.
