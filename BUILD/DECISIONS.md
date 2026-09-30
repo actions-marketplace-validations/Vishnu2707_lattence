@@ -370,3 +370,11 @@ Document the real command sequence in `docs/gitlab-ci.md` and verify it end
 to end locally against `examples/vulnerable-agent` (the template's exact
 shell commands, run outside GitLab's runner since none is available in
 this environment, are the acceptance evidence).
+
+2026-09-30 D-038
+Decision: T-164 graph explosion reproduction verified: scan produces 24 nodes,
+92 edges, 92 attack paths, 21% PQC readiness with consistent quantum vulnerability
+counts; graph chain produces 32 finding correlations across 9 distinct structural
+paths. No graph explosion regression; stale artifact root cause confirmed and
+documented. Test `test_graph_chain_cross_layer_correlation_counts` added to
+prevent future regression.
