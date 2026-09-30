@@ -6,12 +6,16 @@ Recorded `agent.md` in repository root and `BUILD/HANDOFF.md` in the ledger
 directory, preserving existing `AGENTS.md`. Established checkout status on
 branch `dev` tracking `origin/dev` at commit `cc0aea7`. Confirmed origin
 remote `https://github.com/Vishnu2707/lattence.git`. Initialized task `T-163`
-as done and `T-164` as todo for the graph explosion reproduction and trace.
+as done and `T-164` as done for the graph explosion reproduction and trace.
+T-164 verified: scan produces 24 nodes, 92 edges, 92 attack paths, 21% PQC
+readiness, 13 findings, with consistent quantum_vulnerable_assets/counts in
+both JSON summary and terminal output. Graph chain produces 32 finding
+correlations across 9 distinct structural paths. All 386 suite tests pass.
 Treating all prior milestone claims (node/edge counts, PQC readiness,
 dashboard sizes, cross-layer chains, and CI integration) as unverified
 until executed and verified live.
 
-Task T-163. Next task: T-164.
+Task T-164. Next task: T-165.
 
 ## 2026-09-26: Milestone 4 (overnight run) closed, overnight run complete
 
