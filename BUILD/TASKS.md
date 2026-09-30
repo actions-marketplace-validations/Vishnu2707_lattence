@@ -1098,3 +1098,14 @@ not a live bug" findings (D-034 graph explosion, D-036 cross-layer audit).
 
 Full suite: 384 passed (2 pre-existing Docker exclusions). Prose check
 passed across the entire tracked tree.
+
+# Investigation handoff
+
+[T-163] [Investigation] [ORCH] record handoff documentation and ledger baseline | deps: T-162 | status: done | commit: self
+
+Recorded agent.md in repository root and BUILD/HANDOFF.md in the ledger
+directory. Established checkout status on dev tracking origin/dev, confirmed
+remote Vishnu2707/lattence, and initialized task ledger for the graph
+explosion investigation.
+
+[T-164] [Investigation] [GRAPH] reproduce and trace graph explosion in vulnerable-agent fixture | deps: T-163 | status: todo | commit: self
