@@ -1,5 +1,18 @@
 # Current state
 
+## 2026-09-30: Investigation handoff and baseline established
+
+Recorded `agent.md` in repository root and `BUILD/HANDOFF.md` in the ledger
+directory, preserving existing `AGENTS.md`. Established checkout status on
+branch `dev` tracking `origin/dev` at commit `cc0aea7`. Confirmed origin
+remote `https://github.com/Vishnu2707/lattence.git`. Initialized task `T-163`
+as done and `T-164` as todo for the graph explosion reproduction and trace.
+Treating all prior milestone claims (node/edge counts, PQC readiness,
+dashboard sizes, cross-layer chains, and CI integration) as unverified
+until executed and verified live.
+
+Task T-163. Next task: T-164.
+
 ## 2026-09-26: Milestone 4 (overnight run) closed, overnight run complete
 
 Published the false-positive audit methodology and rate directly in
@@ -117,60 +130,21 @@ this state update. Milestones 1 through 4 from the overnight run plan were
 not started in this pass; see HANDOFF below if this run stops before they
 are picked up.
 
-- Milestone: v1.0.0 shipped. Repository is public. Milestone A (detection
-  precision hardening) done. Milestone B (web dashboard, minimum viable)
-  done; holding per instruction before Milestone C.
-- Last completed: T-157, extended the self-contained `lattence-report.html`
-  (already written by `scan`/`attack`/`report`) into a minimum-viable
-  dashboard: a click-to-sort-by-severity findings table, the existing PQC
-  readiness metric, and a new cross-layer chain section reusing the
-  existing version 1 `presentation.json` data contract, embedded inline
-  (not fetched) so the page works fully offline from `file://`. Added
-  `GET /v1/dashboard` to `lattence-api`, a small addition mirroring the
-  existing `/v1/chain` route. Full detail in `BUILD/DECISIONS.md` D-033 and
-  `BUILD/TASKS.md` T-157.
-- Verified against `examples/vulnerable-agent`: `graph chain` then `scan`
-  then `report` into the same `--out` directory produced
-  `lattence-report.html` containing "32 finding correlations across 9
-  distinct structural paths" and the real `LT-AI-002 -> LT-PQC-203` chain
-  with its `key_exchange` hop, the same accepted fixture numbers already
-  pinned in `tests/cli/test_graph_chain_command.py`. `GET /v1/dashboard`
-  against the same example returned identical chain data as HTML. Checked
-  offline: no `http://`, `https://`, `fetch(`, `<link `, or `cdn.` anywhere
-  in the rendered output; the extracted `<script>` parses with a real JS
-  engine (Node `new Function()`).
-- Previously completed: T-156, audited all native attack and detection
-  rules for matching on node field shape without a real data-flow path (the
-  bug class found live at workflow.py:208), fixed the three rules that make
-  a reachability claim (LT-AI-002, LT-AI-007, LT-AI-008) by requiring a real
-  graph path via the existing `lattence.graph.traversal` machinery, and
-  added a distinct regression test module. Full detail in
-  `BUILD/DECISIONS.md` D-032 and `BUILD/TASKS.md` T-156.
-- Self-scan (`lattence scan .` against this repository): 13 findings before
-  the fix, 13 after. Unchanged in count because the workflow.py:208 false
-  positive and a real missed finding on examples/vulnerable-agent's RAG
-  dataset were colliding on the same rule ids; after the fix LT-AI-002 and
-  LT-AI-008 correctly target `dataset:rag-pipeline:examples/vulnerable-agent/app.py:15`
-  instead of the spurious `dataset:chroma:lattence-cli/src/lattence/cli/workflow.py:208`
-  node. All deliberate findings in examples/vulnerable-agent still fire
-  (verified via `lattence graph export examples/vulnerable-agent --offline`
-  and the CLI attack fixture test).
-- Next task: none selected. Hold for review before scoping Milestone C.
-- Blockers: none for Milestone B. Noted but not fixed, out of this
-  milestone's scope: `lattence-cli/src/lattence/cli/workflow.py` was
-  already over the 300-line module guideline (364 lines) before this
-  milestone and is now 379 lines after the minimal `_sibling_presentation`
-  addition; splitting it is a separate task. Also carried over from
-  Milestone A, unchanged: the provenance hook (`.githooks/check-provenance --all`)
-  fails against full commit history because of a pre-existing dependabot
-  merge commit (`a14d7ba`, already on `origin/dev` before this milestone
-  started) whose commit body includes an attribution trailer that dependabot
-  itself adds, matching the provenance pattern. This predates and is
-  unrelated to Milestone A's commits; each commit made in this milestone
+- Milestone: Investigation into reported graph explosion.
+- Last completed: T-163, recorded handoff documentation and ledger baseline.
+- Next task: T-164, reproduce and trace graph explosion in vulnerable-agent fixture.
+- Blockers: none. Noted but not fixed: `lattence-cli/src/lattence/cli/workflow.py`
+  is 407 lines (over the 300-line guideline). The provenance hook
+  (`.githooks/check-provenance --all`) fails against full commit history due
+  to a pre-existing dependabot merge commit (`a14d7ba`, already on `origin/dev`
+  before this milestone started) whose commit body includes an attribution
+  trailer that dependabot itself adds, matching the provenance pattern. This
+  predates and is unrelated to current work; each commit made in this run
   passes the hook on its own diff and message. Also noted but pre-existing
   and unrelated: `tests/docker/` has 2 failing tests in this environment
   because no Docker daemon is running locally (confirmed by running them
   against the unmodified branch before starting Milestone A).
+
 - Note: local verification uses `uv sync --all-packages --dev`, matching CI.
   A plain `uv sync` does not install every workspace member editable and
   produces spurious mypy import-untyped errors across packages. Also: after
