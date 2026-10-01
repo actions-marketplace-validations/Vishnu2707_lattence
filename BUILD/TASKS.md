@@ -1108,4 +1108,4 @@ directory. Established checkout status on dev tracking origin/dev, confirmed
 remote Vishnu2707/lattence, and initialized task ledger for the graph
 explosion investigation.
 
-[T-164] [Investigation] [GRAPH] reproduce and trace graph explosion in vulnerable-agent fixture | deps: T-163 | status: done | commit: self
+[T-165] [Investigation] [TEST] verify build discipline and test stability across repeated runs | deps: T-164 | status: todo | commit: self

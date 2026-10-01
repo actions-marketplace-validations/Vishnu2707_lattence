@@ -15,7 +15,7 @@ Treating all prior milestone claims (node/edge counts, PQC readiness,
 dashboard sizes, cross-layer chains, and CI integration) as unverified
 until executed and verified live.
 
-Task T-164. Next task: T-165.
+Task T-165. Next task: T-166.
 
 ## 2026-09-26: Milestone 4 (overnight run) closed, overnight run complete
 
